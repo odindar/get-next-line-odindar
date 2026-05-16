@@ -24,13 +24,17 @@ typedef struct s_list
 {
 	char			*content;
 	struct s_list	*next;
-}				t_list;
+}					t_list;
 
 char	*get_next_line(int fd);
-int		found_newline(t_list *list);
+void	read_to_list(int fd, t_list **list);
+void	append_node(t_list **list, char *buf);
+char	*extract_line(t_list *list);
+void	clean_list(t_list **list);
+int		found_nextline(t_list *list);
 t_list	*find_last_node(t_list *list);
-void	add_to_stash(t_list **stash, char *buf, int readed);
-void	generate_line_malloc(char **line, t_list *stash);
-void	free_stash(t_list *stash);
+int		len_to_nextline(t_list *list);
+void	copy_str(t_list *list, char *line);
+void	free_list_and_save_rest(t_list **list, char *buf);
 
 #endif

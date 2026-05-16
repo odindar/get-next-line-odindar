@@ -5,134 +5,115 @@
 /*                                                    +:+ +:+         +:+     */
 /*   By: odindar <odindar@student.42istanbul.com    +#+  +:+       +#+        */
 /*                                                +#+#+#+#+#+   +#+           */
-/*   Created: 2026/05/13 05:04:00 by odindar           #+#    #+#             */
-/*   Updated: 2026/05/13 05:04:00 by odindar          ###   ########.fr       */
+/*   Created: 2026/05/13 05:52:56 by odindar           #+#    #+#             */
+/*   Updated: 2026/05/13 05:52:56 by odindar          ###   ########.fr       */
 /*                                                                            */
 /* ************************************************************************** */
 
 #include "get_next_line.h"
 
-void	read_and_stash(int fd, t_list **stash)
+void	clean_list(t_list **list)
 {
+	t_list	*last;
 	char	*buf;
-	int		readed;
-
-	readed = 1;
-	while (!found_newline(*stash) && readed != 0)
-	{
-		buf = malloc(sizeof(char) * (BUFFER_SIZE + 1));
-		if (buf == NULL)
-			return ;
-		readed = (int)read(fd, buf, BUFFER_SIZE);
-		if ((*stash == NULL && readed == 0) || readed == -1)
-		{
-			free(buf);
-			if (readed == -1)
-			{
-				free_stash(*stash);
-				*stash = NULL;
-			}
-			return ;
-		}
-		buf[readed] = '\0';
-		add_to_stash(stash, buf, readed);
-		free(buf);
-	}
-}
-
-void	extract_line(t_list *stash, char **line)
-{
-	int	i;
-	int	j;
-
-	if (stash == NULL)
-		return ;
-	generate_line_malloc(line, stash);
-	if (*line == NULL)
-		return ;
-	j = 0;
-	while (stash)
-	{
-		i = 0;
-		while (stash->content[i])
-		{
-			if (stash->content[i] == '\n')
-			{
-				(*line)[j++] = stash->content[i];
-				break ;
-			}
-			(*line)[j++] = stash->content[i++];
-		}
-		stash = stash->next;
-	}
-	(*line)[j] = '\0';
-}
-
-void	clean_stash_helper(t_list **stash, t_list *clean_node, int i)
-{
-	int		j;
-	t_list	*last;
-
-	j = 0;
-	last = find_last_node(*stash);
-	while (last->content[i + j])
-		j++;
-	clean_node->content = malloc(sizeof(char) * (j + 1));
-	if (!clean_node->content)
-	{
-		free(clean_node);
-		return ;
-	}
-	j = 0;
-	while (last->content[i])
-		clean_node->content[j++] = last->content[i++];
-	clean_node->content[j] = '\0';
-	free_stash(*stash);
-	*stash = clean_node;
-	if (clean_node->content[0] == '\0')
-	{
-		free_stash(*stash);
-		*stash = NULL;
-	}
-}
-
-void	clean_stash(t_list **stash)
-{
-	t_list	*last;
-	t_list	*clean_node;
 	int		i;
+	int		j;
 
-	if (!stash || !*stash)
-		return ;
-	clean_node = malloc(sizeof(t_list));
-	if (!clean_node)
-		return ;
-	clean_node->next = NULL;
-	last = find_last_node(*stash);
+	last = find_last_node(*list);
 	i = 0;
 	while (last->content[i] && last->content[i] != '\n')
 		i++;
 	if (last->content[i] == '\n')
 		i++;
-	clean_stash_helper(stash, clean_node, i);
+	j = 0;
+	while (last->content[i + j])
+		j++;
+	if (j == 0)
+		return (free_list_and_save_rest(list, NULL));
+	buf = malloc(sizeof(char) * (j + 1));
+	if (!buf)
+		return (free_list_and_save_rest(list, NULL));
+	j = 0;
+	while (last->content[i])
+		buf[j++] = last->content[i++];
+	buf[j] = '\0';
+	free_list_and_save_rest(list, buf);
+}
+
+char	*extract_line(t_list *list)
+{
+	int		len;
+	char	*line;
+
+	if (!list)
+		return (NULL);
+	len = len_to_nextline(list);
+	line = malloc(sizeof(char) * (len + 1));
+	if (!line)
+		return (NULL);
+	copy_str(list, line);
+	return (line);
+}
+
+void	append_node(t_list **list, char *buf)
+{
+	t_list	*new_node;
+	t_list	*last_node;
+
+	new_node = malloc(sizeof(t_list));
+	if (!new_node)
+	{
+		free(buf);
+		return ;
+	}
+	new_node->content = buf;
+	new_node->next = NULL;
+	if (!*list)
+	{
+		*list = new_node;
+		return ;
+	}
+	last_node = find_last_node(*list);
+	last_node->next = new_node;
+}
+
+void	read_to_list(int fd, t_list **list)
+{
+	char	*buf;
+	int		bytes_read;
+
+	while (!found_nextline(*list))
+	{
+		buf = malloc(sizeof(char) * (BUFFER_SIZE + 1));
+		if (!buf)
+			return ;
+		bytes_read = read(fd, buf, BUFFER_SIZE);
+		if (bytes_read <= 0)
+		{
+			free(buf);
+			if (bytes_read < 0)
+				free_list_and_save_rest(list, NULL);
+			return ;
+		}
+		buf[bytes_read] = '\0';
+		append_node(list, buf);
+	}
 }
 
 char	*get_next_line(int fd)
 {
-	static t_list	*stash = NULL;
+	static t_list	*list = NULL;
 	char			*line;
 
-	if (fd < 0 || BUFFER_SIZE <= 0 || read(fd, 0, 0) < 0)
+	if (fd < 0 || BUFFER_SIZE <= 0)
 	{
-		free_stash(stash);
-		stash = NULL;
+		free_list_and_save_rest(&list, NULL);
 		return (NULL);
 	}
-	read_and_stash(fd, &stash);
-	if (stash == NULL)
+	read_to_list(fd, &list);
+	if (!list)
 		return (NULL);
-	line = NULL;
-	extract_line(stash, &line);
-	clean_stash(&stash);
+	line = extract_line(list);
+	clean_list(&list);
 	return (line);
 }
