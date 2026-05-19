@@ -28,7 +28,7 @@ typedef struct s_list
 
 char	*get_next_line(int fd);
 void	read_to_list(int fd, t_list **list);
-void	append_node(t_list **list, char *buf);
+int		append_node(t_list **list, char *buf);
 char	*extract_line(t_list *list);
 void	clean_list(t_list **list);
 int		found_nextline(t_list *list);

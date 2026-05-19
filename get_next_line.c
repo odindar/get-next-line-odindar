@@ -55,7 +55,7 @@ char	*extract_line(t_list *list)
 	return (line);
 }
 
-void	append_node(t_list **list, char *buf)
+int	append_node(t_list **list, char *buf)
 {
 	t_list	*new_node;
 	t_list	*last_node;
@@ -64,17 +64,18 @@ void	append_node(t_list **list, char *buf)
 	if (!new_node)
 	{
 		free(buf);
-		return ;
+		return (0);
 	}
 	new_node->content = buf;
 	new_node->next = NULL;
 	if (!*list)
 	{
 		*list = new_node;
-		return ;
+		return (1);
 	}
 	last_node = find_last_node(*list);
 	last_node->next = new_node;
+	return (1);
 }
 
 void	read_to_list(int fd, t_list **list)
@@ -96,7 +97,8 @@ void	read_to_list(int fd, t_list **list)
 			return ;
 		}
 		buf[bytes_read] = '\0';
-		append_node(list, buf);
+		if (!append_node(list, buf))
+			return ;
 	}
 }
 
